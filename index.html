@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Batalha Química - A Jornada</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="telaApresentacao" class="tela">
+    <h1>⚗️ Batalha Química</h1>
+    <div class="historia">
+      <p>🧙‍♂️ <strong>Vocês foram teleportados para um mundo estranho</strong> e a única maneira de sair dele é enfrentando os desafios químicos.</p>
+      <p>A trilha revisará tudo que foi visto durante o eixo. O Calouro pode escolher entre quatro classes <strong>EM GRUPO</strong>:</p>
+    </div>
+    <div class="classe-descricao">
+      <div class="classe-item"><span class="icone">🛡️</span><br><strong>Cavaleiros Covalentes</strong></div>
+      <div class="classe-item"><span class="icone">🧭</span><br><strong>Viajantes Periódicos</strong></div>
+      <div class="classe-item"><span class="icone">⚛️</span><br><strong>Feiticeiros Atômicos</strong></div>
+      <div class="classe-item"><span class="icone">🪓</span><br><strong>Bárbaros Moleculares</strong></div>
+    </div>
+    <div class="historia">
+      <p>“Vocês terão a ajuda do <strong>Mestre dos Magos</strong> (Monitores/Ministrantes) APENAS uma vez para tirar dúvidas e sumir.”</p>
+    </div>
+    <button class="btn" onclick="alternarTela('telaConfig')">🌟 Iniciar Jornada</button>
+  </div>
+
+  <div id="telaConfig" class="tela oculta">
+    <h2>📝 Nome das Equipes</h2>
+    <div class="form-grid">
+      <div class="campo"><label>Equipe 1</label><input type="text" id="eq1" placeholder="Ex: Ácidos"></div>
+      <div class="campo"><label>Equipe 2</label><input type="text" id="eq2" placeholder="Ex: Bases"></div>
+      <div class="campo"><label>Equipe 3</label><input type="text" id="eq3" placeholder="Ex: Sais"></div>
+      <div class="campo"><label>Equipe 4</label><input type="text" id="eq4" placeholder="Ex: Óxidos"></div>
+    </div>
+    <button class="btn" onclick="sortearClasses()">🎲 Sortear Classes</button>
+    <button class="btn btn-secundario" onclick="alternarTela('telaApresentacao')">⬅️ Voltar</button>
+  </div>
+
+  <div id="telaSorteio" class="tela oculta">
+    <h2>🔮 Classes Sorteadas</h2>
+    <div id="classesSorteadasContainer" class="classes-sorteadas"></div>
+    <button class="btn" onclick="iniciarJogo()">⚔️ Iniciar Batalha</button>
+    <button class="btn btn-secundario" onclick="alternarTela('telaConfig')">⬅️ Refazer Sorteio</button>
+  </div>
+
+  <div id="telaJogo" class="tela oculta" style="max-width: 1000px;">
+    <h2>⚔️ Batalha Química</h2>
+    <div id="painelMestre">
+      <h3>👑 Painel do Mestre</h3>
+      <p>Selecione a equipe ativa e clique no hexágono de destino.</p>
+      <div id="botoesJogadores" class="jogadores-container"></div>
+      <div id="ajudaContainer" class="ajuda-container"></div>
+      <button class="btn btn-secundario" onclick="location.reload()" style="font-size: 1rem; padding: 0.5rem 1rem;">🔄 Resetar Jogo</button>
+    </div>
+    <div id="board" class="tabuleiro"></div>
+  </div>
+
+  <div id="modalAjuda" class="modal-overlay oculta">
+    <div id="conteudoAjuda" class="conteudo-ajuda">
+      <div class="mestre-img">🧙‍♂️</div>
+      <h2>Mestre dos Magos</h2>
+      <p id="mensagemAjuda"></p>
+    </div>
+  </div>
+
+  <div id="battle" class="modal-overlay oculta">
+    <div class="modal">
+      <h2 style="color: #b30000; font-size: 2.5rem;">⚔️ Desafio!</h2>
+      <p id="battleText" style="font-size: 1.2rem; margin-bottom: 20px;"></p>
+      <button class="btn" onclick="definirVencedor(1)">🏆 Invasor Vence (Avança)</button>
+      <button class="btn" onclick="definirVencedor(2)">🛡️ Defesa Vence (Mantém Casa)</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
