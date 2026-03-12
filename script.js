@@ -1,448 +1,284 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+// ==================== CONSTANTES ====================
+const CLASSES_BASE = [
+  { nome: "Cavaleiros Covalentes", icone: "🛡️", imagem: "cavaleiro.jpeg" },
+  { nome: "Viajantes Periódicos", icone: "🧭", imagem: "viajante.jpeg" },
+  { nome: "Feiticeiros Atômicos", icone: "⚛️", imagem: "feiticeiro.jpeg" },
+  { nome: "Bárbaros Moleculares", icone: "🪓", imagem: "barbaro.jpeg" }
+];
+const CASA_FIM = 18;
+const CASAS_BOSS = [16, 17];
+const TEMPO_AJUDA = 5 * 60 * 1000;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  user-select: none;
+// ==================== ESTADO GLOBAL ====================
+let jogadores = [];
+let jogadorAtivo = 0;
+let batalha = null;
+let bossBattle = null;
+let timersAjuda = {};
+
+// ==================== CONTROLE DE TELAS ====================
+function mostrarTela(id) {
+  document.querySelectorAll('.screen').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-body {
-  background: #0d0f12;
-  background-image: 
-    linear-gradient(#151821 2px, transparent 2px),
-    linear-gradient(90deg, #151821 2px, transparent 2px);
-  background-size: 40px 40px;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Press Start 2P', cursive;
-  color: #fff;
-  padding: 16px;
+// ==================== SORTEIO DAS CLASSES ====================
+function sortearClasses() {
+  const nomes = [
+    document.getElementById('eq1').value.trim() || 'P1',
+    document.getElementById('eq2').value.trim() || 'P2',
+    document.getElementById('eq3').value.trim() || 'P3',
+    document.getElementById('eq4').value.trim() || 'P4'
+  ];
+
+  const misturadas = [...CLASSES_BASE].sort(() => Math.random() - 0.5);
+
+  window.dadosSorteio = nomes.map((nome, i) => ({
+    nome: nome.substring(0, 10),
+    classe: misturadas[i].nome,
+    icone: misturadas[i].icone,
+    imagem: misturadas[i].imagem
+  }));
+
+  const container = document.getElementById('classesSorteadasContainer');
+  container.innerHTML = window.dadosSorteio.map(item => `
+    <div class="draw-card">
+      <div class="icon">${item.icone}</div>
+      <p style="font-size: 10px; color: #fbf236; margin-bottom: 5px;">${item.nome}</p>
+      <p style="font-size: 8px;">${item.classe}</p>
+    </div>
+  `).join('');
+
+  mostrarTela('telaSorteio');
 }
 
-.snes-container {
-  background: #000;
-  border: 12px solid #222;
-  border-radius: 15px;
-  box-shadow: 0 0 0 4px #111, 0 20px 50px rgba(0,0,0,0.8);
-  padding: 15px;
-  width: 100%;
-  max-width: 900px;
-  position: relative;
-  overflow: hidden;
+// ==================== INICIAR JOGO ====================
+function iniciarJogo() {
+  if (!window.dadosSorteio) return;
+
+  jogadores = window.dadosSorteio.map((d, i) => ({
+    ...d,
+    id: i,
+    pos: i,
+    posAnterior: i,
+    cor: 'p' + i,
+    ajudaUsada: false
+  }));
+
+  document.getElementById('botoesJogadores').innerHTML = jogadores.map(j => `
+    <button class="team-btn" id="btn-j${j.id}" onclick="selecionarJogador(${j.id})">
+      ${j.icone} ${j.nome}
+    </button>
+  `).join('');
+
+  document.getElementById('ajudaContainer').innerHTML = jogadores.map(j => `
+    <button class="help-btn" id="ajuda-${j.id}" onclick="usarAjuda(${j.id})">
+      🧙‍♂️ ${j.nome} <span id="timer-${j.id}" class="timer"></span>
+    </button>
+  `).join('');
+
+  criarTabuleiro();
+  atualizarPecas();
+  selecionarJogador(0);
+  mostrarTela('telaJogo');
 }
 
-.crt-scanlines {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 4px, 6px 100%;
-  z-index: 100;
-  pointer-events: none;
-  opacity: 0.6;
+// ==================== TABULEIRO HEX ====================
+function criarTabuleiro() {
+  const linhas = [4, 5, 4, 3, 2, 1];
+  let index = 0;
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  linhas.forEach((qtd, rowIdx) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.zIndex = 10 - rowIdx;
+
+    for (let i = 0; i < qtd; i++) {
+      const hex = document.createElement('div');
+      let classeExtra = '';
+      if (index === 16 || index === 17) {
+        classeExtra = 'boss';
+      }
+      hex.className = `hex ${index === CASA_FIM ? 'topo' : ''} ${classeExtra}`;
+      hex.dataset.index = index;
+      hex.textContent = index === CASA_FIM ? 'FIM' : index;
+      hex.onclick = () => clicarCasa(parseInt(hex.dataset.index));
+      row.appendChild(hex);
+      index++;
+    }
+    board.appendChild(row);
+  });
 }
 
-.game-screen {
-  background: #111;
-  background-image: radial-gradient(circle at center, #242938 0%, #000 100%);
-  border: 4px solid #444;
-  border-radius: 8px;
-  padding: 30px;
-  min-height: 600px;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 10;
+function atualizarPecas() {
+  document.querySelectorAll('.piece').forEach(p => p.remove());
+
+  jogadores.forEach(j => {
+    const casa = document.querySelector(`[data-index="${j.pos}"]`);
+    if (casa) {
+      const piece = document.createElement('div');
+      piece.className = `piece ${j.cor}`;
+      // Cria imagem
+      const img = document.createElement('img');
+      img.src = j.imagem;
+      img.alt = j.classe;
+      piece.appendChild(img);
+      piece.title = `${j.nome} - ${j.classe}`;
+      casa.appendChild(piece);
+    }
+  });
 }
 
-.screen {
-  display: none;
-  flex-direction: column;
-  gap: 20px;
-  animation: fadeIn 0.4s steps(4, end);
+// ==================== SELEÇÃO DO JOGADOR ATIVO ====================
+function selecionarJogador(id) {
+  jogadorAtivo = id;
+  document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`btn-j${id}`).classList.add('active');
 }
 
-.screen.active {
-  display: flex;
+// ==================== MOVIMENTAÇÃO ====================
+function clicarCasa(index) {
+  if (batalha || bossBattle) return;
+
+  const j = jogadores[jogadorAtivo];
+  if (j.pos !== index) j.posAnterior = j.pos;
+  j.pos = index;
+  atualizarPecas();
+
+  if (index === CASA_FIM) {
+    document.querySelector('.topo').style.filter = 'brightness(1.5)';
+    setTimeout(() => alert(`🏆 A party ${j.nome} (${j.classe}) zerou a dungeon!`), 300);
+  } else {
+    verificarBoss();
+    if (!bossBattle) {
+      verificarBatalha();
+    }
+  }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+// ==================== SISTEMA DE BATALHA NORMAL ====================
+function verificarBatalha() {
+  const atual = jogadorAtivo;
+  const oponente = jogadores.findIndex((j, i) => i !== atual && j.pos === jogadores[atual].pos);
+  if (oponente !== -1) {
+    batalha = { a: atual, b: oponente };
+    document.getElementById('battleText').innerHTML = `
+      <span style="color:#99e550">${jogadores[atual].nome}</span> ${jogadores[atual].icone}<br>VERSUS<br>
+      <span style="color:#d95763">${jogadores[oponente].nome}</span> ${jogadores[oponente].icone}
+    `;
+    // Atualiza os botões com os nomes
+    document.getElementById('battleBtn1').innerHTML = `▶ ${jogadores[atual].nome} GANHA`;
+    document.getElementById('battleBtn2').innerHTML = `▶ ${jogadores[oponente].nome} GANHA`;
+    document.getElementById('battle').style.display = 'flex';
+  }
 }
 
-h1 {
-  font-size: 26px;
-  text-align: center;
-  color: #fbf236;
-  text-shadow: 4px 4px 0 #000;
-  margin-bottom: 20px;
-  letter-spacing: 1px;
+function definirVencedor(tipo) {
+  if (!batalha) return;
+
+  if (tipo === 1) {
+    jogadores[batalha.b].pos = jogadores[batalha.b].posAnterior;
+  } else {
+    jogadores[batalha.a].pos = jogadores[batalha.a].posAnterior;
+  }
+
+  batalha = null;
+  document.getElementById('battle').style.display = 'none';
+  atualizarPecas();
 }
 
-h2 {
-  font-size: 16px;
-  text-align: center;
-  color: #99e550;
-  text-shadow: 2px 2px 0 #000;
-  margin-bottom: 10px;
+// ==================== SISTEMA DE BOSS ====================
+function verificarBoss() {
+  const jogador16 = jogadores.find(j => j.pos === 16);
+  const jogador17 = jogadores.find(j => j.pos === 17);
+
+  if (jogador16 && jogador17) {
+    bossBattle = { a: jogador16.id, b: jogador17.id };
+    document.getElementById('bossText').innerHTML = `
+      <span style="color:#fbf236">${jogador16.nome}</span> ${jogador16.icone}<br>E<br>
+      <span style="color:#fbf236">${jogador17.nome}</span> ${jogador17.icone}<br>
+      Estão trancados na sala do Boss!
+    `;
+    // Atualiza os botões do boss
+    document.getElementById('bossBtn1').innerHTML = `▶ ${jogador16.nome} GANHA`;
+    document.getElementById('bossBtn2').innerHTML = `▶ ${jogador17.nome} GANHA`;
+    document.getElementById('bossBattle').style.display = 'flex';
+  }
 }
 
-.rpg-panel {
-  background: linear-gradient(180deg, #153c6e 0%, #051024 100%);
-  border: 4px solid #fff;
-  border-radius: 6px;
-  padding: 20px;
-  box-shadow: 
-    inset 0 0 0 2px #5b6ee1, 
-    inset 0 0 10px rgba(0,0,0,0.8),
-    6px 6px 0px rgba(0,0,0,0.5);
+function definirVencedorBoss(tipo) {
+  if (!bossBattle) return;
+
+  if (tipo === 1) {
+    jogadores[bossBattle.b].pos = jogadores[bossBattle.b].posAnterior;
+  } else {
+    jogadores[bossBattle.a].pos = jogadores[bossBattle.a].posAnterior;
+  }
+
+  bossBattle = null;
+  document.getElementById('bossBattle').style.display = 'none';
+  atualizarPecas();
 }
 
-.rpg-panel p {
-  font-size: 10px;
-  line-height: 2;
-  margin-bottom: 15px;
-  text-shadow: 2px 2px 0 #000;
+// ==================== AJUDA DO MESTRE DOS MAGOS ====================
+function usarAjuda(id) {
+  const botao = document.getElementById(`ajuda-${id}`);
+  if (botao.disabled) return;
+
+  const j = jogadores[id];
+  const timerSpan = document.getElementById(`timer-${id}`);
+
+  botao.disabled = true;
+
+  const modal = document.getElementById('modalAjuda');
+  const conteudo = modal.querySelector('.modal-content');
+  document.getElementById('mensagemAjuda').innerHTML = `A party <span style="color:#fbf236">${j.nome}</span> usou invocação!<br>Um monitor está a caminho.`;
+
+  modal.style.display = 'flex';
+  conteudo.classList.remove('fumaca');
+
+  setTimeout(() => {
+    conteudo.classList.add('fumaca');
+    setTimeout(() => {
+      modal.style.display = 'none';
+      conteudo.classList.remove('fumaca');
+    }, 1200);
+  }, 3000);
+
+  let segundosRestantes = TEMPO_AJUDA / 1000;
+  const intervalo = setInterval(() => {
+    segundosRestantes--;
+    if (segundosRestantes <= 0) {
+      clearInterval(intervalo);
+      timerSpan.textContent = '';
+      botao.disabled = false;
+    } else {
+      const mins = Math.floor(segundosRestantes / 60);
+      const secs = segundosRestantes % 60;
+      timerSpan.textContent = `[${mins}:${secs.toString().padStart(2, '0')}]`;
+    }
+  }, 1000);
+
+  timersAjuda[id] = intervalo;
 }
 
-.quote {
-  font-size: 8px;
-  color: #d77bba;
-  text-align: center;
-  text-shadow: 2px 2px 0 #000;
+// ==================== RESET ====================
+function resetarJogo() {
+  for (let id in timersAjuda) {
+    clearInterval(timersAjuda[id]);
+  }
+  location.reload();
 }
 
-.class-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  margin: 10px 0;
-}
-
-.class-card {
-  background: #222034;
-  border: 4px solid;
-  border-radius: 4px;
-  padding: 15px 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  font-size: 9px;
-  text-align: center;
-  box-shadow: 4px 4px 0 #000;
-}
-
-.class-card span {
-  font-size: 30px;
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-}
-
-.btn-snes {
-  background: #37946e;
-  border: 4px solid #fff;
-  border-radius: 4px;
-  padding: 15px 20px;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 12px;
-  color: #fff;
-  text-shadow: 2px 2px 0 #000;
-  box-shadow: inset -2px -4px 0 rgba(0,0,0,0.3), 4px 4px 0 #000;
-  cursor: pointer;
-  transition: 0.1s;
-}
-
-.btn-snes:hover {
-  background: #4bb387;
-  transform: translateX(4px);
-}
-
-.btn-snes:active {
-  background: #6abe30;
-  box-shadow: inset 2px 4px 0 rgba(0,0,0,0.3), 2px 2px 0 #000;
-  transform: translate(4px, 2px);
-}
-
-.btn-snes.btn-secondary {
-  background: #696a6a;
-}
-.btn-snes.btn-secondary:hover { background: #8f979c; }
-
-.btn-snes.small {
-  padding: 10px 15px;
-  font-size: 9px;
-}
-
-.input-row {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 12px;
-}
-
-.input-row label {
-  font-size: 12px;
-  width: 40px;
-  color: #fbf236;
-  text-shadow: 2px 2px 0 #000;
-}
-
-.input-row input {
-  flex: 1;
-  background: #000;
-  border: 2px solid #5b6ee1;
-  padding: 10px;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 10px;
-  color: #fff;
-  outline: none;
-}
-
-.draw-panel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
-}
-
-.draw-card {
-  background: #222034;
-  border: 4px solid #fbf236;
-  padding: 15px;
-  width: 180px;
-  text-align: center;
-  box-shadow: 4px 4px 0 #000;
-  animation: popUp 0.3s steps(3, end);
-}
-
-@keyframes popUp {
-  0% { transform: scale(0.5); }
-  100% { transform: scale(1); }
-}
-
-.draw-card .icon {
-  font-size: 40px;
-  margin-bottom: 10px;
-}
-
-.draw-card p {
-  font-size: 8px;
-  line-height: 1.5;
-  text-shadow: 2px 2px 0 #000;
-}
-
-.hex-board {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 15px;
-  transform: scale(0.85);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-  margin-top: -18px;
-}
-
-.hex {
-  width: 75px;
-  height: 75px;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  background: #3f3f74;
-  border: 2px solid #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  color: #fff;
-  text-shadow: 2px 2px 0 #000;
-  position: relative;
-  cursor: pointer;
-  transition: 0.1s;
-  box-shadow: inset -4px -6px 0 rgba(0,0,0,0.5), inset 4px 4px 0 rgba(255,255,255,0.2);
-}
-
-.hex:hover {
-  background: #5b6ee1;
-  filter: brightness(1.2);
-  z-index: 5;
-}
-
-.hex.topo {
-  background: #fbf236;
-  color: #000;
-  text-shadow: none;
-  box-shadow: inset -4px -6px 0 rgba(0,0,0,0.3), inset 4px 4px 0 rgba(255,255,255,0.6);
-}
-
-.hex.boss {
-  background: #d95763;
-  color: #fff;
-  box-shadow: inset -4px -6px 0 rgba(0,0,0,0.5), inset 4px 4px 0 rgba(255,255,255,0.3);
-  animation: dangerPulse 1s steps(2, end) infinite;
-}
-
-@keyframes dangerPulse {
-  0% { background: #d95763; }
-  50% { background: #ac3232; }
-}
-
-/* PEÇAS DOS JOGADORES - AGORA COM IMAGENS */
-.piece {
-  position: absolute;
-  width: 35px;
-  height: 35px;
-  pointer-events: none;
-  z-index: 10;
-  animation: dropIn 0.3s steps(4, end);
-}
-
-.piece img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 2px 2px 0 #000;
-  image-rendering: pixelated;
-}
-
-@keyframes dropIn {
-  0% { transform: translateY(-20px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-
-.p0 { bottom: 3px; left: 3px; }
-.p1 { bottom: 3px; right: 3px; }
-.p2 { top: 8px; left: 3px; }
-.p3 { top: 8px; right: 3px; }
-
-.master-panel {
-  margin-bottom: 20px;
-  padding: 15px;
-}
-.master-panel h3 {
-  font-size: 12px;
-  color: #fbf236;
-  margin-bottom: 10px;
-  text-shadow: 2px 2px 0 #000;
-}
-
-.team-buttons, .help-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin: 15px 0;
-}
-
-.team-btn {
-  background: #222034;
-  border: 2px solid #fff;
-  padding: 10px;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 8px;
-  color: #fff;
-  cursor: pointer;
-  min-width: 110px;
-  box-shadow: 2px 2px 0 #000;
-  transition: 0.1s;
-}
-
-.team-btn.active {
-  background: #d95763;
-  border-color: #fbf236;
-  transform: translateY(-2px);
-  box-shadow: 4px 4px 0 #000;
-}
-
-.help-btn {
-  background: #76428a;
-  border: 2px solid #d77bba;
-  padding: 8px 12px;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 7px;
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 #000;
-}
-
-.help-btn:disabled {
-  background: #333;
-  border-color: #555;
-  color: #777;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
-.timer {
-  color: #fbf236;
-  margin-left: 5px;
-}
-
-.modal-overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.8);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-
-.modal-content {
-  width: 80%;
-  max-width: 450px;
-  text-align: center;
-  animation: popUp 0.2s steps(3, end);
-}
-
-.modal-content h2 { margin-bottom: 15px; }
-.modal-content p { font-size: 12px; }
-
-.battle-icons {
-  font-size: 40px;
-  margin: 15px 0;
-  text-shadow: 4px 4px 0 #000;
-}
-
-.battle-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 20px;
-  align-items: center;
-}
-
-.legend {
-  font-size: 7px !important;
-  color: #8f979c;
-  margin-top: 15px;
-  text-align: center;
-}
-
-.wizard-icon {
-  font-size: 60px;
-  margin-bottom: 10px;
-  filter: drop-shadow(4px 4px 0 #000);
-}
-
-.fumaca {
-  animation: pixelFade 1.2s steps(5, end) forwards;
-}
-
-@keyframes pixelFade {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.1); }
-  100% { opacity: 0; transform: scale(1.5); }
-}
+// ==================== EXPOR FUNÇÕES GLOBAIS ====================
+window.mostrarTela = mostrarTela;
+window.sortearClasses = sortearClasses;
+window.iniciarJogo = iniciarJogo;
+window.selecionarJogador = selecionarJogador;
+window.clicarCasa = clicarCasa;
+window.definirVencedor = definirVencedor;
+window.definirVencedorBoss = definirVencedorBoss;
+window.usarAjuda = usarAjuda;
+window.resetarJogo = resetarJogo;
