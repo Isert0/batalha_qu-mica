@@ -1,9 +1,9 @@
 // ==================== CONSTANTES ====================
 const CLASSES_BASE = [
-  { nome: "Cavaleiros Covalentes", icone: "🛡️", imagem: "cavaleiro.jpeg" },
-  { nome: "Viajantes Periódicos", icone: "🧭", imagem: "viajante.jpeg" },
-  { nome: "Feiticeiros Atômicos", icone: "⚛️", imagem: "feiticeiro.jpeg" },
-  { nome: "Bárbaros Moleculares", icone: "🪓", imagem: "barbaro.jpeg" }
+  { nome: "Cavaleiros Covalentes", icone: "🛡️" },
+  { nome: "Viajantes Periódicos", icone: "🧭" },
+  { nome: "Feiticeiros Atômicos", icone: "⚛️" },
+  { nome: "Bárbaros Moleculares", icone: "🪓" }
 ];
 const CASA_FIM = 18;
 const CASAS_BOSS = [16, 17];
@@ -36,8 +36,7 @@ function sortearClasses() {
   window.dadosSorteio = nomes.map((nome, i) => ({
     nome: nome.substring(0, 10),
     classe: misturadas[i].nome,
-    icone: misturadas[i].icone,
-    imagem: misturadas[i].imagem
+    icone: misturadas[i].icone
   }));
 
   const container = document.getElementById('classesSorteadasContainer');
@@ -120,11 +119,7 @@ function atualizarPecas() {
     if (casa) {
       const piece = document.createElement('div');
       piece.className = `piece ${j.cor}`;
-      // Cria imagem
-      const img = document.createElement('img');
-      img.src = j.imagem;
-      img.alt = j.classe;
-      piece.appendChild(img);
+      piece.textContent = j.icone; // volta a usar o emoji
       piece.title = `${j.nome} - ${j.classe}`;
       casa.appendChild(piece);
     }
