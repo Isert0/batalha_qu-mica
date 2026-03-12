@@ -1,138 +1,448 @@
-const CLASSES = [
-  { nome: "Cavaleiros Covalentes", icone: "🛡️" },
-  { nome: "Viajantes Periódicos", icone: "🧭" },
-  { nome: "Feiticeiros Atômicos", icone: "⚛️" },
-  { nome: "Bárbaros Moleculares", icone: "🪓" }
-];
-const CASA_FIM = 18;
-let jogadores = [], jogadorAtivo = 0, batalha = null, dadosSorteio = [];
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-function alternarTela(idVisivel) {
-  document.querySelectorAll('.tela').forEach(t => t.classList.add('oculta'));
-  document.getElementById(idVisivel).classList.remove('oculta');
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
 }
 
-function sortearClasses() {
-  const nomes = [
-    document.getElementById('eq1').value.trim() || 'Equipe 1',
-    document.getElementById('eq2').value.trim() || 'Equipe 2',
-    document.getElementById('eq3').value.trim() || 'Equipe 3',
-    document.getElementById('eq4').value.trim() || 'Equipe 4'
-  ];
-  const misturadas = [...CLASSES].sort(() => Math.random() - 0.5);
-  
-  dadosSorteio = nomes.map((nome, i) => ({ nome, classe: misturadas[i].nome, icone: misturadas[i].icone }));
-  
-  const container = document.getElementById('classesSorteadasContainer');
-  container.innerHTML = dadosSorteio.map(item => `
-    <div class="card-classe">
-      <div class="icone-grande">${item.icone}</div>
-      <h3>${item.nome}</h3>
-      <p><strong>${item.classe}</strong></p>
-    </div>
-  `).join('');
-  
-  alternarTela('telaSorteio');
+body {
+  background: #0d0f12;
+  background-image: 
+    linear-gradient(#151821 2px, transparent 2px),
+    linear-gradient(90deg, #151821 2px, transparent 2px);
+  background-size: 40px 40px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', cursive;
+  color: #fff;
+  padding: 16px;
 }
 
-function iniciarJogo() {
-  jogadores = dadosSorteio.map((d, i) => ({ ...d, id: i, pos: i, posAnterior: i, cor: 'p' + i, ajudaUsada: false }));
-  
-  document.getElementById('botoesJogadores').innerHTML = jogadores.map(j => `
-    <button class="jogador-btn" id="btn-j${j.id}" onclick="selecionarJogador(${j.id})">
-      <span style="font-size: 1.5rem;">${j.icone}</span><span>${j.nome}</span>
-    </button>`).join('');
-
-  document.getElementById('ajudaContainer').innerHTML = jogadores.map(j => `
-    <button class="btn-ajuda" id="ajuda-${j.id}" onclick="usarAjuda(${j.id})">🧙‍♂️ ${j.nome}</button>
-  `).join('');
-
-  criarTabuleiro();
-  atualizarPecas();
-  selecionarJogador(0);
-  alternarTela('telaJogo');
+.snes-container {
+  background: #000;
+  border: 12px solid #222;
+  border-radius: 15px;
+  box-shadow: 0 0 0 4px #111, 0 20px 50px rgba(0,0,0,0.8);
+  padding: 15px;
+  width: 100%;
+  max-width: 900px;
+  position: relative;
+  overflow: hidden;
 }
 
-function usarAjuda(id) {
-  const j = jogadores[id];
-  if (j.ajudaUsada) return;
-  j.ajudaUsada = true;
-  document.getElementById(`ajuda-${id}`).disabled = true;
-
-  document.getElementById('mensagemAjuda').innerHTML = `A equipe <strong>${j.nome}</strong> invocou ajuda!<br>Um monitor está a caminho...`;
-  const modal = document.getElementById('modalAjuda');
-  const conteudo = document.getElementById('conteudoAjuda');
-  
-  modal.classList.remove('oculta');
-  conteudo.classList.remove('fumaca');
-
-  setTimeout(() => {
-    conteudo.classList.add('fumaca');
-    setTimeout(() => modal.classList.add('oculta'), 1400);
-  }, 2500);
+.crt-scanlines {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.6;
 }
 
-function criarTabuleiro() {
-  const linhas = [4, 5, 4, 3, 2, 1];
-  let index = 0, board = document.getElementById('board');
-  board.innerHTML = '';
-
-  linhas.forEach((qtd, rowIdx) => {
-    let row = `<div class="linha" style="z-index: ${10 - rowIdx}">`;
-    for (let i = 0; i < qtd; i++) {
-      let isFim = index === CASA_FIM;
-      row += `<div class="hex ${isFim ? 'topo' : ''}" data-index="${index}" onclick="clicarCasa(${index})">${isFim ? '🏁' : index}</div>`;
-      index++;
-    }
-    board.innerHTML += row + '</div>';
-  });
+.game-screen {
+  background: #111;
+  background-image: radial-gradient(circle at center, #242938 0%, #000 100%);
+  border: 4px solid #444;
+  border-radius: 8px;
+  padding: 30px;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
 }
 
-function atualizarPecas() {
-  document.querySelectorAll('.piece').forEach(p => p.remove());
-  jogadores.forEach(j => {
-    const casa = document.querySelector(`[data-index="${j.pos}"]`);
-    if (casa) casa.innerHTML += `<div class="piece ${j.cor}" title="${j.nome}">${j.icone}</div>`;
-  });
+.screen {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeIn 0.4s steps(4, end);
 }
 
-function selecionarJogador(id) {
-  jogadorAtivo = id;
-  document.querySelectorAll('.jogador-btn').forEach(b => b.classList.remove('ativo'));
-  document.getElementById(`btn-j${id}`).classList.add('ativo');
+.screen.active {
+  display: flex;
 }
 
-function clicarCasa(index) {
-  if (batalha) return;
-  const j = jogadores[jogadorAtivo];
-  if (j.pos !== index) j.posAnterior = j.pos;
-  j.pos = index;
-  atualizarPecas();
-
-  if (index === CASA_FIM) {
-    document.querySelector('.topo').style.boxShadow = "0 0 30px #ffd700";
-    setTimeout(() => alert(`🏆 A equipe ${j.nome} (${j.classe}) venceu a trilha!`), 300);
-  } else {
-    verificarBatalha();
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-function verificarBatalha() {
-  const atual = jogadorAtivo;
-  const oponente = jogadores.findIndex((j, i) => i !== atual && j.pos === jogadores[atual].pos);
-  
-  if (oponente !== -1) {
-    batalha = { a: atual, b: oponente };
-    document.getElementById('battleText').innerHTML = `<strong>${jogadores[atual].nome}</strong> invadiu o território de <strong>${jogadores[oponente].nome}</strong>!<br><br>Quem errar a questão volta para a casa anterior.`;
-    document.getElementById('battle').classList.remove('oculta');
-  }
+h1 {
+  font-size: 26px;
+  text-align: center;
+  color: #fbf236;
+  text-shadow: 4px 4px 0 #000;
+  margin-bottom: 20px;
+  letter-spacing: 1px;
 }
 
-function definirVencedor(tipo) {
-  if (tipo === 1) jogadores[batalha.b].pos = jogadores[batalha.b].posAnterior; // Defesa perde
-  else jogadores[batalha.a].pos = jogadores[batalha.a].posAnterior; // Invasor perde
-  
-  batalha = null;
-  document.getElementById('battle').classList.add('oculta');
-  atualizarPecas();
+h2 {
+  font-size: 16px;
+  text-align: center;
+  color: #99e550;
+  text-shadow: 2px 2px 0 #000;
+  margin-bottom: 10px;
+}
+
+.rpg-panel {
+  background: linear-gradient(180deg, #153c6e 0%, #051024 100%);
+  border: 4px solid #fff;
+  border-radius: 6px;
+  padding: 20px;
+  box-shadow: 
+    inset 0 0 0 2px #5b6ee1, 
+    inset 0 0 10px rgba(0,0,0,0.8),
+    6px 6px 0px rgba(0,0,0,0.5);
+}
+
+.rpg-panel p {
+  font-size: 10px;
+  line-height: 2;
+  margin-bottom: 15px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.quote {
+  font-size: 8px;
+  color: #d77bba;
+  text-align: center;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin: 10px 0;
+}
+
+.class-card {
+  background: #222034;
+  border: 4px solid;
+  border-radius: 4px;
+  padding: 15px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 9px;
+  text-align: center;
+  box-shadow: 4px 4px 0 #000;
+}
+
+.class-card span {
+  font-size: 30px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.btn-snes {
+  background: #37946e;
+  border: 4px solid #fff;
+  border-radius: 4px;
+  padding: 15px 20px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  box-shadow: inset -2px -4px 0 rgba(0,0,0,0.3), 4px 4px 0 #000;
+  cursor: pointer;
+  transition: 0.1s;
+}
+
+.btn-snes:hover {
+  background: #4bb387;
+  transform: translateX(4px);
+}
+
+.btn-snes:active {
+  background: #6abe30;
+  box-shadow: inset 2px 4px 0 rgba(0,0,0,0.3), 2px 2px 0 #000;
+  transform: translate(4px, 2px);
+}
+
+.btn-snes.btn-secondary {
+  background: #696a6a;
+}
+.btn-snes.btn-secondary:hover { background: #8f979c; }
+
+.btn-snes.small {
+  padding: 10px 15px;
+  font-size: 9px;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 12px;
+}
+
+.input-row label {
+  font-size: 12px;
+  width: 40px;
+  color: #fbf236;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.input-row input {
+  flex: 1;
+  background: #000;
+  border: 2px solid #5b6ee1;
+  padding: 10px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  color: #fff;
+  outline: none;
+}
+
+.draw-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+}
+
+.draw-card {
+  background: #222034;
+  border: 4px solid #fbf236;
+  padding: 15px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 4px 4px 0 #000;
+  animation: popUp 0.3s steps(3, end);
+}
+
+@keyframes popUp {
+  0% { transform: scale(0.5); }
+  100% { transform: scale(1); }
+}
+
+.draw-card .icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.draw-card p {
+  font-size: 8px;
+  line-height: 1.5;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.hex-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 15px;
+  transform: scale(0.85);
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  margin-top: -18px;
+}
+
+.hex {
+  width: 75px;
+  height: 75px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: #3f3f74;
+  border: 2px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  position: relative;
+  cursor: pointer;
+  transition: 0.1s;
+  box-shadow: inset -4px -6px 0 rgba(0,0,0,0.5), inset 4px 4px 0 rgba(255,255,255,0.2);
+}
+
+.hex:hover {
+  background: #5b6ee1;
+  filter: brightness(1.2);
+  z-index: 5;
+}
+
+.hex.topo {
+  background: #fbf236;
+  color: #000;
+  text-shadow: none;
+  box-shadow: inset -4px -6px 0 rgba(0,0,0,0.3), inset 4px 4px 0 rgba(255,255,255,0.6);
+}
+
+.hex.boss {
+  background: #d95763;
+  color: #fff;
+  box-shadow: inset -4px -6px 0 rgba(0,0,0,0.5), inset 4px 4px 0 rgba(255,255,255,0.3);
+  animation: dangerPulse 1s steps(2, end) infinite;
+}
+
+@keyframes dangerPulse {
+  0% { background: #d95763; }
+  50% { background: #ac3232; }
+}
+
+/* PEÇAS DOS JOGADORES - AGORA COM IMAGENS */
+.piece {
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  pointer-events: none;
+  z-index: 10;
+  animation: dropIn 0.3s steps(4, end);
+}
+
+.piece img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 2px 2px 0 #000;
+  image-rendering: pixelated;
+}
+
+@keyframes dropIn {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.p0 { bottom: 3px; left: 3px; }
+.p1 { bottom: 3px; right: 3px; }
+.p2 { top: 8px; left: 3px; }
+.p3 { top: 8px; right: 3px; }
+
+.master-panel {
+  margin-bottom: 20px;
+  padding: 15px;
+}
+.master-panel h3 {
+  font-size: 12px;
+  color: #fbf236;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.team-buttons, .help-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.team-btn {
+  background: #222034;
+  border: 2px solid #fff;
+  padding: 10px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  color: #fff;
+  cursor: pointer;
+  min-width: 110px;
+  box-shadow: 2px 2px 0 #000;
+  transition: 0.1s;
+}
+
+.team-btn.active {
+  background: #d95763;
+  border-color: #fbf236;
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0 #000;
+}
+
+.help-btn {
+  background: #76428a;
+  border: 2px solid #d77bba;
+  padding: 8px 12px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 7px;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000;
+}
+
+.help-btn:disabled {
+  background: #333;
+  border-color: #555;
+  color: #777;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.timer {
+  color: #fbf236;
+  margin-left: 5px;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-content {
+  width: 80%;
+  max-width: 450px;
+  text-align: center;
+  animation: popUp 0.2s steps(3, end);
+}
+
+.modal-content h2 { margin-bottom: 15px; }
+.modal-content p { font-size: 12px; }
+
+.battle-icons {
+  font-size: 40px;
+  margin: 15px 0;
+  text-shadow: 4px 4px 0 #000;
+}
+
+.battle-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  align-items: center;
+}
+
+.legend {
+  font-size: 7px !important;
+  color: #8f979c;
+  margin-top: 15px;
+  text-align: center;
+}
+
+.wizard-icon {
+  font-size: 60px;
+  margin-bottom: 10px;
+  filter: drop-shadow(4px 4px 0 #000);
+}
+
+.fumaca {
+  animation: pixelFade 1.2s steps(5, end) forwards;
+}
+
+@keyframes pixelFade {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.5); }
 }
