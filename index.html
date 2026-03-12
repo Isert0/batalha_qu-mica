@@ -3,74 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Batalha Química - A Jornada</title>
-  <link rel="stylesheet" href="style.css">
+  <title>⚗️ Trilha Química - 16-Bit RPG</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="snes-container">
+    <div class="crt-scanlines"></div>
+    <div class="game-screen">
+      <!-- TELA DE APRESENTAÇÃO -->
+      <div id="telaApresentacao" class="screen active">
+        <h1>⚗️ Batalha Química</h1>
+        <div class="rpg-panel">
+          <p>🧙‍♂️ <strong>Vocês foram teleportados!</strong></p>
+          <p>Desafios químicos são a única saída deste mundo estranho.</p>
+          <p>A trilha revisará tudo que foi visto no eixo. Preparem-se para a jornada!</p>
+        </div>
+        <div class="class-grid">
+          <div class="class-card" style="border-color: #d95763;"><span>🛡️</span> Cavaleiros Covalentes</div>
+          <div class="class-card" style="border-color: #5b6ee1;"><span>🧭</span> Viajantes Periódicos</div>
+          <div class="class-card" style="border-color: #6abe30;"><span>⚛️</span> Feiticeiros Atômicos</div>
+          <div class="class-card" style="border-color: #df7126;"><span>🪓</span> Bárbaros Moleculares</div>
+        </div>
+        <p class="quote">“O Mestre dos Magos ajuda, mas sua invocação leva 5 minutos para recarregar.”</p>
+        <button class="btn-snes" onclick="mostrarTela('telaConfig')">▶ START GAME</button>
+      </div>
 
-  <div id="telaApresentacao" class="tela">
-    <h1>⚗️ Batalha Química</h1>
-    <div class="historia">
-      <p>🧙‍♂️ <strong>Vocês foram teleportados para um mundo estranho</strong> e a única maneira de sair dele é enfrentando os desafios químicos.</p>
-      <p>A trilha revisará tudo que foi visto durante o eixo. O Calouro pode escolher entre quatro classes <strong>EM GRUPO</strong>:</p>
+      <!-- TELA DE CONFIGURAÇÃO -->
+      <div id="telaConfig" class="screen">
+        <h2>REGISTRO DA PARTY</h2>
+        <div class="rpg-panel">
+          <div class="input-row"><label>P1</label><input type="text" id="eq1" value="Ácidos"></div>
+          <div class="input-row"><label>P2</label><input type="text" id="eq2" value="Bases"></div>
+          <div class="input-row"><label>P3</label><input type="text" id="eq3" value="Sais"></div>
+          <div class="input-row"><label>P4</label><input type="text" id="eq4" value="Óxidos"></div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn-snes" onclick="sortearClasses()">🎲 SORTEAR</button>
+          <button class="btn-snes btn-secondary" onclick="mostrarTela('telaApresentacao')">↩ CANCELAR</button>
+        </div>
+      </div>
+
+      <!-- TELA DE SORTEIO -->
+      <div id="telaSorteio" class="screen">
+        <h2>STATUS SORTEADOS</h2>
+        <div id="classesSorteadasContainer" class="draw-panel"></div>
+        <div class="action-buttons">
+          <button class="btn-snes" onclick="iniciarJogo()">⚔️ CONFIRMAR</button>
+          <button class="btn-snes btn-secondary" onclick="mostrarTela('telaConfig')">↩ REFAZER</button>
+        </div>
+      </div>
+
+      <!-- TELA DO JOGO -->
+      <div id="telaJogo" class="screen">
+        <h2>⚔️ WORLD MAP</h2>
+        <div class="rpg-panel master-panel">
+          <h3>👑 GAME MASTER</h3>
+          <p>Selecione a party ativa e clique no destino.</p>
+          <div id="botoesJogadores" class="team-buttons"></div>
+          <div id="ajudaContainer" class="help-buttons"></div>
+          <button class="btn-snes btn-small" onclick="resetarJogo()">↺ RESETAR SESSÃO</button>
+        </div>
+        <div id="board" class="hex-board"></div>
+      </div>
     </div>
-    <div class="classe-descricao">
-      <div class="classe-item"><span class="icone">🛡️</span><br><strong>Cavaleiros Covalentes</strong></div>
-      <div class="classe-item"><span class="icone">🧭</span><br><strong>Viajantes Periódicos</strong></div>
-      <div class="classe-item"><span class="icone">⚛️</span><br><strong>Feiticeiros Atômicos</strong></div>
-      <div class="classe-item"><span class="icone">🪓</span><br><strong>Bárbaros Moleculares</strong></div>
-    </div>
-    <div class="historia">
-      <p>“Vocês terão a ajuda do <strong>Mestre dos Magos</strong> (Monitores/Ministrantes) APENAS uma vez para tirar dúvidas e sumir.”</p>
-    </div>
-    <button class="btn" onclick="alternarTela('telaConfig')">🌟 Iniciar Jornada</button>
   </div>
 
-  <div id="telaConfig" class="tela oculta">
-    <h2>📝 Nome das Equipes</h2>
-    <div class="form-grid">
-      <div class="campo"><label>Equipe 1</label><input type="text" id="eq1" placeholder="Ex: Ácidos"></div>
-      <div class="campo"><label>Equipe 2</label><input type="text" id="eq2" placeholder="Ex: Bases"></div>
-      <div class="campo"><label>Equipe 3</label><input type="text" id="eq3" placeholder="Ex: Sais"></div>
-      <div class="campo"><label>Equipe 4</label><input type="text" id="eq4" placeholder="Ex: Óxidos"></div>
-    </div>
-    <button class="btn" onclick="sortearClasses()">🎲 Sortear Classes</button>
-    <button class="btn btn-secundario" onclick="alternarTela('telaApresentacao')">⬅️ Voltar</button>
-  </div>
-
-  <div id="telaSorteio" class="tela oculta">
-    <h2>🔮 Classes Sorteadas</h2>
-    <div id="classesSorteadasContainer" class="classes-sorteadas"></div>
-    <button class="btn" onclick="iniciarJogo()">⚔️ Iniciar Batalha</button>
-    <button class="btn btn-secundario" onclick="alternarTela('telaConfig')">⬅️ Refazer Sorteio</button>
-  </div>
-
-  <div id="telaJogo" class="tela oculta" style="max-width: 1000px;">
-    <h2>⚔️ Batalha Química</h2>
-    <div id="painelMestre">
-      <h3>👑 Painel do Mestre</h3>
-      <p>Selecione a equipe ativa e clique no hexágono de destino.</p>
-      <div id="botoesJogadores" class="jogadores-container"></div>
-      <div id="ajudaContainer" class="ajuda-container"></div>
-      <button class="btn btn-secundario" onclick="location.reload()" style="font-size: 1rem; padding: 0.5rem 1rem;">🔄 Resetar Jogo</button>
-    </div>
-    <div id="board" class="tabuleiro"></div>
-  </div>
-
-  <div id="modalAjuda" class="modal-overlay oculta">
-    <div id="conteudoAjuda" class="conteudo-ajuda">
-      <div class="mestre-img">🧙‍♂️</div>
-      <h2>Mestre dos Magos</h2>
+  <!-- MODAIS -->
+  <div id="modalAjuda" class="modal-overlay">
+    <div class="rpg-panel modal-content">
+      <div class="wizard-icon">🧙‍♂️</div>
+      <h2 style="color: #fbf236;">Mestre dos Magos</h2>
       <p id="mensagemAjuda"></p>
     </div>
   </div>
 
-  <div id="battle" class="modal-overlay oculta">
-    <div class="modal">
-      <h2 style="color: #b30000; font-size: 2.5rem;">⚔️ Desafio!</h2>
-      <p id="battleText" style="font-size: 1.2rem; margin-bottom: 20px;"></p>
-      <button class="btn" onclick="definirVencedor(1)">🏆 Invasor Vence (Avança)</button>
-      <button class="btn" onclick="definirVencedor(2)">🛡️ Defesa Vence (Mantém Casa)</button>
+  <div id="battle" class="modal-overlay">
+    <div class="rpg-panel modal-content battle">
+      <h2>⚔️ ENCOUNTER!</h2>
+      <div class="battle-icons">🛡️ VS ⚔️</div>
+      <p id="battleText"></p>
+      <div class="battle-actions">
+        <button class="btn-snes small" id="battleBtn1" onclick="definirVencedor(1)">▶ JOGADOR 1 GANHA</button>
+        <button class="btn-snes small" id="battleBtn2" onclick="definirVencedor(2)">▶ JOGADOR 2 GANHA</button>
+      </div>
+      <p class="legend">O perdedor é empurrado de volta.</p>
+    </div>
+  </div>
+
+  <div id="bossBattle" class="modal-overlay">
+    <div class="rpg-panel modal-content battle boss">
+      <h2 style="color: #d95763;">👾 BOSS BATTLE!</h2>
+      <div class="battle-icons">👾 VS 👾</div>
+      <p id="bossText"></p>
+      <div class="battle-actions">
+        <button class="btn-snes small" id="bossBtn1" onclick="definirVencedorBoss(1)">▶ JOGADOR 1 GANHA</button>
+        <button class="btn-snes small" id="bossBtn2" onclick="definirVencedorBoss(2)">▶ JOGADOR 2 GANHA</button>
+      </div>
+      <p class="legend">Apenas uma party pode avançar.</p>
     </div>
   </div>
 
