@@ -296,24 +296,19 @@ h2 {
   50% { background: #ac3232; }
 }
 
-/* PEÇAS DOS JOGADORES - AGORA COM IMAGENS */
+/* PEÇAS DOS JOGADORES - AGORA COM EMOJIS (SEM IMAGENS) */
 .piece {
   position: absolute;
   width: 35px;
   height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.8));
   pointer-events: none;
   z-index: 10;
   animation: dropIn 0.3s steps(4, end);
-}
-
-.piece img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 2px 2px 0 #000;
-  image-rendering: pixelated;
 }
 
 @keyframes dropIn {
